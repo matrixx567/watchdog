@@ -30,6 +30,7 @@ from watchdog.events import (
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
+    WatcherErrorEvent,
     generate_sub_created_events,
     generate_sub_moved_events,
 )
@@ -105,8 +106,10 @@ class WindowsApiEmitter(EventEmitter):
                 elif winapi_event.is_removed:
                     self.queue_event(FileDeletedEvent(src_path))
                 elif winapi_event.is_removed_self:
-                    self.queue_event(DirDeletedEvent(self.watch.path))
-                    self.stop()
+                    self.on_removed_watchdir()
+
+    def on_removed_watchdir(self):
+        self.stop()
 
 
 class WindowsApiObserver(BaseObserver):
@@ -117,3 +120,77 @@ class WindowsApiObserver(BaseObserver):
 
     def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
         super().__init__(emitter_class=WindowsApiEmitter, timeout=timeout)
+
+
+
+class WindowsApiEmitterReconnect(WindowsApiEmitter):
+    """
+    Windows API-based emitter that uses ReadDirectoryChangesW
+    to detect file system changes for a watch.
+    It doesn't stop if the watched folder is deleted
+    """
+
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
+                 reconnect_interval=5.0):
+        WindowsApiEmitter.__init__(self, event_queue, watch, timeout)
+
+        self._reconnect_interval = reconnect_interval
+        self._first_call = True
+
+    def on_thread_start(self):
+        # ignore create handle on startup. It will be created at the beginning of queue_events.
+        pass
+
+    def on_thread_stop(self):
+        self._close_handle()
+
+    def _create_handle(self):
+        if not self._handle:
+            self._handle = get_directory_handle(self.watch.path)
+
+    def _close_handle(self):
+        if self._handle:
+            close_directory_handle(self._handle)
+            self._handle = None
+
+    def queue_events(self, timeout):
+
+        if not self._handle:
+            # only wait if the folder gets lost. On startup call the create_handle immediately.
+            if self._first_call:
+                self._first_call = False
+            else:
+                time.sleep(self._reconnect_interval)
+
+            try:
+                self._create_handle()
+            except OSError as ex:
+                src_path = self.watch.path
+                self.queue_event(WatcherErrorEvent(src_path, ex))
+                return  # ignore reading
+
+        # read events
+        WindowsApiEmitter.queue_events(self, timeout)
+
+    def on_removed_watchdir(self):
+        self.queue_event(
+            WatcherErrorEvent(
+                self.watch.path,
+                FileNotFoundError(("The watched directory %(src_path)r "
+                                   "is not available or removed.") %
+                                  (dict(src_path=self.watch.path))
+                                 )
+                             )
+                        )
+        self._close_handle()
+
+
+class WindowsApiObserverReconnect(BaseObserver):
+    """
+    Observer thread that schedules watching directories and dispatches
+    calls to event handlers.
+    """
+
+    def __init__(self, timeout=DEFAULT_OBSERVER_TIMEOUT):
+        BaseObserver.__init__(self, emitter_class=WindowsApiEmitterReconnect,
+                              timeout=timeout)

@@ -87,6 +87,10 @@ class LoggerTrick(Trick):
     def on_any_event(self, event: FileSystemEvent) -> None:
         pass
 
+    @echo.echo
+    def on_error(self, event):
+        pass
+
 
 class ShellCommandTrick(Trick):
 
