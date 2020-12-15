@@ -316,7 +316,22 @@ class BaseObserver(EventDispatcher):
         with self._lock:
             self._add_handler_for_watch(event_handler, watch)
 
-    def remove_handler_for_watch(self, event_handler, watch):
+    def read_number_handler_for_watch(self, watch):
+        """Reads the number of handlers for the given watch.
+
+        :param watch:
+            The watch to request the number of handlers for.
+        :type watch:
+            An instance of :class:`ObservedWatch` or a subclass of
+            :class:`ObservedWatch`
+        :return:
+            The number of handlers for the requested watch.
+        """
+        with self._lock:
+            handlers = list(self._handlers.get(watch, []))
+            return len(handlers)
+
+        def remove_handler_for_watch(self, event_handler, watch):
         """Removes a handler for the given watch.
 
         :param event_handler:
