@@ -96,6 +96,10 @@ class LoggerTrick(Trick):
     def on_moved(self, event):
         pass
 
+    @echo.echo
+    def on_error(self, event):
+        pass
+
 
 class ShellCommandTrick(Trick):
 

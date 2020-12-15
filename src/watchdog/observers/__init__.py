@@ -82,6 +82,7 @@ elif platform.is_windows():
     # polling explicitly for Windows XP
     try:
         from .read_directory_changes import WindowsApiObserver as Observer
+        from .read_directory_changes import WindowsApiObserverReconnect as ObserverReconnect
     except Exception:
         from .polling import PollingObserver as Observer
         warnings.warn("Failed to import read_directory_changes. Fall back to polling.")

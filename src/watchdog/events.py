@@ -64,6 +64,9 @@ Event Classes
    :members:
    :show-inheritance:
 
+.. autoclass:: WatcherErrorEvent
+   :members:
+   :show-inheritance:
 
 Event Handler Classes
 ---------------------
@@ -95,6 +98,7 @@ EVENT_TYPE_MOVED = 'moved'
 EVENT_TYPE_DELETED = 'deleted'
 EVENT_TYPE_CREATED = 'created'
 EVENT_TYPE_MODIFIED = 'modified'
+EVENT_TYPE_ERROR = 'error'
 
 
 class FileSystemEvent:
@@ -244,6 +248,30 @@ class DirMovedEvent(FileSystemMovedEvent):
     is_directory = True
 
 
+class WatcherErrorEvent(FileSystemEvent):
+    """File system event representing an error during watching."""
+
+    event_type = EVENT_TYPE_ERROR
+
+    def __init__(self, src_path, ex):
+        super().__init__(src_path)
+        self.error = ex
+
+    # Used for hashing this as an immutable object.
+    @property
+    def key(self):
+        return (self.event_type, self.src_path, self.error)
+
+    def __repr__(self):
+        return ("<%(class_name)s: src_path=%(src_path)r, "
+                "error=%(error)r>"
+                ) % (dict(class_name=self.__class__.__name__,
+                          src_path=self.src_path,
+                          error=self.error))
+
+
+
+
 class FileSystemEventHandler:
     """
     Base file system event handler that you can override methods from.
@@ -263,6 +291,7 @@ class FileSystemEventHandler:
             EVENT_TYPE_DELETED: self.on_deleted,
             EVENT_TYPE_MODIFIED: self.on_modified,
             EVENT_TYPE_MOVED: self.on_moved,
+            EVENT_TYPE_ERROR: self.on_error,
         }[event.event_type](event)
 
     def on_any_event(self, event):
@@ -310,6 +339,14 @@ class FileSystemEventHandler:
             :class:`DirModifiedEvent` or :class:`FileModifiedEvent`
         """
 
+    def on_error(self, event):
+        """Called when an error occurs during watching the directory.
+
+        :param event:
+            Event representing error state of watcher.
+        :type event:
+            :class:`WatcherErrorEvent`
+        """
 
 class PatternMatchingEventHandler(FileSystemEventHandler):
     """
@@ -366,6 +403,11 @@ class PatternMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`FileSystemEvent`
         """
+        if EVENT_TYPE_ERROR == event.event_type:
+            # Call parent method immediately in case of error
+            super().dispatch(event)
+            return
+
         if self.ignore_directories and event.is_directory:
             return
 
@@ -445,6 +487,11 @@ class RegexMatchingEventHandler(FileSystemEventHandler):
         :type event:
             :class:`FileSystemEvent`
         """
+        if EVENT_TYPE_ERROR == event.event_type:
+            # Call parent method immediately in case of error
+            super().dispatch(event)
+            return
+
         if self.ignore_directories and event.is_directory:
             return
 
@@ -493,6 +540,12 @@ class LoggingEventHandler(FileSystemEventHandler):
 
         what = 'directory' if event.is_directory else 'file'
         self.logger.info("Modified %s: %s", what, event.src_path)
+
+    def on_error(self, event):
+        super().on_error(event)
+
+        logging.warn("An error '%s' occured during watching directory %s",
+            event.exception, event.src_path)
 
 
 def generate_sub_moved_events(src_dir_path, dest_dir_path):

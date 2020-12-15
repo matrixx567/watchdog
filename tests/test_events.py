@@ -24,11 +24,13 @@ from watchdog.events import (
     DirCreatedEvent,
     FileMovedEvent,
     DirMovedEvent,
+    WatcherErrorEvent,
     FileSystemEventHandler,
     EVENT_TYPE_MODIFIED,
     EVENT_TYPE_CREATED,
     EVENT_TYPE_DELETED,
     EVENT_TYPE_MOVED,
+    EVENT_TYPE_ERROR,
 )
 
 path_1 = '/path/xyz'
@@ -105,6 +107,14 @@ def test_dir_created_event():
     assert event.is_directory
     assert not event.is_synthetic
 
+def test_watcher_error_event():
+    exception = Exception()
+    event = WatcherErrorEvent(path_1, exception)
+    assert path_1 == event.src_path
+    assert EVENT_TYPE_ERROR == event.event_type
+    assert not event.is_directory
+    assert not event.is_synthetic
+    assert exception == event.error
 
 def test_file_system_event_handler_dispatch():
     dir_del_event = DirDeletedEvent('/path/blah.py')
@@ -115,6 +125,7 @@ def test_file_system_event_handler_dispatch():
     file_mod_event = FileModifiedEvent('/path/blah.txt')
     dir_mov_event = DirMovedEvent('/path/blah.py', '/path/blah')
     file_mov_event = FileMovedEvent('/path/blah.txt', '/path/blah')
+    watcher_error_event = WatcherErrorEvent("/path/", Exception())
 
     all_events = [
         dir_mod_event,
@@ -125,6 +136,7 @@ def test_file_system_event_handler_dispatch():
         file_del_event,
         file_cre_event,
         file_mov_event,
+        watcher_error_event,
     ]
 
     class TestableEventHandler(FileSystemEventHandler):
@@ -143,6 +155,9 @@ def test_file_system_event_handler_dispatch():
 
         def on_created(self, event):
             assert event.event_type == EVENT_TYPE_CREATED
+
+        def on_error(self, event):
+            assert event.event_type == EVENT_TYPE_ERROR
 
     handler = TestableEventHandler()
 
