@@ -87,6 +87,7 @@ elif sys.platform in ("dragonfly", "freebsd", "netbsd", "openbsd", "bsd"):
 elif sys.platform.startswith("win"):
     try:
         from .read_directory_changes import WindowsApiObserver as Observer
+        from .read_directory_changes import WindowsApiObserverReconnect as ObserverReconnect
     except Exception:
         from .polling import PollingObserver as Observer
 
