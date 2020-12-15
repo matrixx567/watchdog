@@ -122,7 +122,6 @@ class WindowsApiObserver(BaseObserver):
         super().__init__(emitter_class=WindowsApiEmitter, timeout=timeout)
 
 
-
 class WindowsApiEmitterReconnect(WindowsApiEmitter):
     """
     Windows API-based emitter that uses ReadDirectoryChangesW
@@ -130,11 +129,9 @@ class WindowsApiEmitterReconnect(WindowsApiEmitter):
     It doesn't stop if the watched folder is deleted
     """
 
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT,
-                 reconnect_interval=5.0):
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
         WindowsApiEmitter.__init__(self, event_queue, watch, timeout)
 
-        self._reconnect_interval = reconnect_interval
         self._first_call = True
 
     def on_thread_start(self):
@@ -160,7 +157,7 @@ class WindowsApiEmitterReconnect(WindowsApiEmitter):
             if self._first_call:
                 self._first_call = False
             else:
-                time.sleep(self._reconnect_interval)
+                time.sleep(timeout)
 
             try:
                 self._create_handle()
