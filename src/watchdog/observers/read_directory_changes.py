@@ -128,9 +128,8 @@ class WindowsApiEmitterReconnect(WindowsApiEmitter):
     to detect file system changes for a watch.
     It doesn't stop if the watched folder is deleted
     """
-
-    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT):
-        WindowsApiEmitter.__init__(self, event_queue, watch, timeout)
+    def __init__(self, event_queue, watch, timeout=DEFAULT_EMITTER_TIMEOUT, event_filter=None):
+        WindowsApiEmitter.__init__(self, event_queue, watch, timeout, event_filter)
 
         self._first_call = True
 
