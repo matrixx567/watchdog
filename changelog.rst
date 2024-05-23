@@ -3,10 +3,18 @@
 Changelog
 ---------
 
-3.0.1
+4.0.1
 ~~~~~
 
-2023-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...HEAD>`__
+2024-xx-xx • `full history <https://github.com/gorakhargosh/watchdog/compare/v4.0.0...HEAD>`__
+
+- [inotify] Fix missing ``event_filter`` for the full emitter (`#1032 <https://github.com/gorakhargosh/watchdog/pull/1032>`__)
+- Thanks to our beloved contributors: @mraspaud
+
+4.0.0
+~~~~~
+
+2024-02-06 • `full history <https://github.com/gorakhargosh/watchdog/compare/v3.0.0...v4.0.0>`__
 
 - Drop support for Python 3.7.
 - Add support for Python 3.12.
